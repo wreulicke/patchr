@@ -12,13 +12,21 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	patchr "github.com/wreulicke/go-cli-template"
+	"github.com/wreulicke/patchr"
 	"gopkg.in/yaml.v3"
 )
 
+type patchConfig struct {
+	valuesPath    string
+	commentPrefix string
+	inputs        map[string]string
+	dryRunOutput  io.Writer
+	dryRun        bool
+}
+
 func mainInternal() error {
 	//nolint:wrapcheck
-	return NewApp().Execute()
+	return NewApp(map[string]string{}).Execute()
 }
 
 func main() {
@@ -27,35 +35,24 @@ func main() {
 	}
 }
 
-func NewApp() *cobra.Command {
-	var valuesPath string
-	var commentPrefix string
+func NewApp(inputs map[string]string) *cobra.Command {
+	var config patchConfig
+	config.inputs = inputs
+
 	c := cobra.Command{
-		Use:   "patchr [file]",
+		Use:   "patchr [file or directory]",
 		Short: "patchr is a tool to apply patches to source code using comment directives",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var data any
-			if valuesPath != "" {
-				d, err := readValues(valuesPath)
-				if err != nil {
-					return err
-				}
-				data = d
+			if config.dryRun {
+				config.dryRunOutput = cmd.OutOrStdout()
 			}
-			f := args[0]
-			s, err := os.Stat(f)
-			if os.IsNotExist(err) {
-				return fmt.Errorf("file not found: %s", f)
-			}
-			if s.IsDir() {
-				return applyPatchDir(f, commentPrefix, data)
-			}
-			return applyPatch(f, commentPrefix, data)
+			return apply(args[0], &config)
 		},
 	}
-	c.Flags().StringVarP(&valuesPath, "values", "v", "", "values file for template")
-	c.Flags().StringVarP(&commentPrefix, "comment-prefix", "p", "", "overrides comment prefix")
+	c.Flags().StringVarP(&config.valuesPath, "values", "v", "", "values file for template")
+	c.Flags().StringVarP(&config.commentPrefix, "comment-prefix", "p", "", "overrides comment prefix")
+	c.Flags().BoolVarP(&config.dryRun, "dry-run", "d", false, "dry run")
 
 	c.AddCommand(
 		NewVersionCommand(),
@@ -63,7 +60,7 @@ func NewApp() *cobra.Command {
 	return &c
 }
 
-// need a way to handle any files
+// need a way to handle any files.
 var wellknownCommentPrefixMap = map[string]string{
 	".go":     "//",
 	".java":   "//",
@@ -86,26 +83,44 @@ func detectCommentPrefix(path string) (string, error) {
 	return "", fmt.Errorf("unsupported file extension: %s", ext)
 }
 
-func readValues(path string) (any, error) {
-	f, err := os.Open(path)
+func readValues(config *patchConfig) (any, error) {
+	f, err := os.Open(config.valuesPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open file: %w", err)
 	}
 	defer f.Close()
 
 	var b bytes.Buffer
-	p, err := detectCommentPrefix(path)
+	p, err := detectCommentPrefix(config.valuesPath)
+	if p == "" {
+		// check shebang
+		bs := make([]byte, 2)
+		_, err := f.Read(bs)
+		if err != nil {
+			return nil, fmt.Errorf("cannot try to read shebang: %w", err)
+		}
+		if string(bs) == "#!" {
+			p = "#"
+		}
+
+		// reset position
+		_, err = f.Seek(0, 0)
+		if err != nil {
+			return nil, fmt.Errorf("cannot reset position: %w", err)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	patcher := patchr.NewPatcher(p)
+
+	patcher := patchr.NewPatcher(p, config.inputs)
 	err = patcher.Apply(&b, f, nil)
 	if err != nil {
 		return nil, fmt.Errorf("cannot apply patch: %w", err)
 	}
 
 	var data any
-	ext := filepath.Ext(path)
+	ext := filepath.Ext(config.valuesPath)
 	switch ext {
 	case ".json":
 		err = json.NewDecoder(&b).Decode(&data)
@@ -124,15 +139,35 @@ func readValues(path string) (any, error) {
 	}
 }
 
-func applyPatchDir(path string, commentPrefix string, data any) error {
-	err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+func apply(targetPath string, config *patchConfig) error {
+	var data any
+	if config.valuesPath != "" {
+		d, err := readValues(config)
+		if err != nil {
+			return err
+		}
+		data = d
+	}
+	s, err := os.Stat(targetPath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("file not found: %s", targetPath)
+	}
+	if s.IsDir() {
+		return applyPatchDir(targetPath, config, data)
+	}
+	return applyPatch(targetPath, config, data)
+}
+
+func applyPatchDir(targetPath string, config *patchConfig, data any) error {
+	err := filepath.WalkDir(targetPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			return nil
 		}
-		return applyPatch(path, commentPrefix, data)
+		// copy config
+		return applyPatch(path, config, data)
 	})
 	if err != nil {
 		return fmt.Errorf("cannot walk: %w", err)
@@ -140,29 +175,40 @@ func applyPatchDir(path string, commentPrefix string, data any) error {
 	return nil
 }
 
-func applyPatch(path string, commentPrefix string, data any) error {
-	prefix := commentPrefix
-	if commentPrefix == "" {
+func applyPatch(targetPath string, config *patchConfig, data any) error {
+	prefix := config.commentPrefix
+	if prefix == "" {
 		var err error
-		prefix, err = detectCommentPrefix(path)
+		prefix, err = detectCommentPrefix(targetPath)
 		if err != nil {
 			return err
 		}
 	}
-	src, err := os.OpenFile(path, os.O_RDWR, 0o644)
+	src, err := os.OpenFile(targetPath, os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("cannot open file: %w", err)
 	}
 	defer src.Close()
 
 	var b bytes.Buffer
-	p := patchr.NewPatcher(prefix)
+	p := patchr.NewPatcher(prefix, config.inputs)
 
 	err = p.Apply(&b, src, data)
 	if err != nil {
 		return fmt.Errorf("cannot apply patch: %w", err)
 	}
 
+	if config.dryRun {
+		fmt.Fprintf(config.dryRunOutput, "=== %s === start ===\n", targetPath)
+		_, err = io.Copy(config.dryRunOutput, &b)
+		if err != nil {
+			return fmt.Errorf("cannot copy to dry run output: %w", err)
+		}
+		fmt.Fprintf(config.dryRunOutput, "=== %s === end ===\n", targetPath)
+		return nil
+	}
+
+	// replace file content
 	err = src.Truncate(0)
 	if err != nil {
 		return fmt.Errorf("cannot truncate: %w", err)
@@ -192,8 +238,10 @@ func NewVersionCommand() *cobra.Command {
 				return fmt.Errorf("cannot read buildinfo: %w", err)
 			}
 
-			fmt.Fprintf(w, "go version: %s", info.GoVersion)
-			fmt.Fprintf(w, "module version: %s", info.Main.Version)
+			fmt.Fprintf(w, "go version: %s\n", info.GoVersion)
+			fmt.Fprintf(w, "path: %s\n", info.Path)
+			fmt.Fprintf(w, "mod: %s\n", info.Main.Path)
+			fmt.Fprintf(w, "module version: %s\n", info.Main.Version)
 			if detail {
 				fmt.Fprintln(w)
 				fmt.Fprintln(w, info)
