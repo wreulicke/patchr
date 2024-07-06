@@ -1,6 +1,6 @@
-# go-cli-template
+# patchr
 
-This is my repository template for cli tool in go.
+This is patch tool using comment directive.
 
 ## Installation
 
@@ -10,11 +10,11 @@ This is my repository template for cli tool in go.
 ## Usage
 
 ```bash
-go-cli-template
+$ patchr
 
 Usage:
-  go-cli-template [flags]
-  go-cli-template [command]
+  patchr [flags]
+  patchr [command]
 
 Available Commands:
   completion  Generate the autocompletion script for the specified shell
@@ -22,10 +22,14 @@ Available Commands:
   version     show version
 
 Flags:
-  -h, --help   help for go-cli-template
+  -h, --help   help for patchr
 
-Use "go-cli-template [command] --help" for more information about a command.
+Use "patchr [command] --help" for more information about a command.
 ```
+
+## Example
+
+See [testdata](./testdata/).
 
 ## License
 
