@@ -1,6 +1,6 @@
 builds:
-  - main: ./cmd/go-cli-template
-    binary: go-cli-template
+  - main: ./cmd/patchr
+    binary: patchr
     goos:
       - windows
       - darwin
@@ -27,4 +27,4 @@ changelog:
 release:
   github:
     owner: wreulicke
-    name: go-cli-template
+    name: patchr
