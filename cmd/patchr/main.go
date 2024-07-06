@@ -89,12 +89,12 @@ func detectCommentPrefix(f *os.File, path string) (string, error) {
 		return "", fmt.Errorf("cannot try to read shebang: %w", err)
 	}
 
-	defer func() {
-		_, err = f.Seek(0, 0)
-	}()
-
 	if string(bs) == "#!" {
-		return "#", err
+		_, err := f.Seek(0, 0)
+		if err != nil {
+			return "", fmt.Errorf("cannot seek: %w", err)
+		}
+		return "#", nil
 	}
 	return "", fmt.Errorf("unsupported file extension: %s", ext)
 }
