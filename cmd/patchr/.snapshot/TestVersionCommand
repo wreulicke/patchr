@@ -1,9 +1,9 @@
-go version: go1.22.4
+go version: go1.22.5
 path: github.com/wreulicke/patchr/cmd/patchr
 mod: github.com/wreulicke/patchr
 module version: (devel)
 
-go	go1.22.4
+go	go1.22.5
 path	github.com/wreulicke/patchr/cmd/patchr
 mod	github.com/wreulicke/patchr	(devel)	
 dep	github.com/Masterminds/goutils	v1.1.1	h1:5nUrii3FMTL5diU80unEVvNevw1nH4+ZV4DSLVJLSYI=
@@ -27,6 +27,7 @@ dep	golang.org/x/sys	v0.2.0	h1:ljd4t30dBnAvMZaQCevtY0xLLD0A+bRZXbgLMLU1F/A=
 dep	gopkg.in/yaml.v3	v3.0.1	h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 build	-buildmode=exe
 build	-compiler=gc
+build	-race=true
 build	CGO_ENABLED=1
 build	CGO_CFLAGS=
 build	CGO_CPPFLAGS=
