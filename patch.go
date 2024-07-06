@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/influxdata/go-prompt"
 )
 
 var errNotMetDirective = errors.New("not met directive")
@@ -220,7 +221,7 @@ func writeNewLine(line string, dst io.Writer) error {
 
 func executeTemplate(text string, data any) (string, error) {
 	var b bytes.Buffer
-	t, err := template.New("replace").Funcs(sprig.TxtFuncMap()).Parse(text)
+	t, err := template.New("replace").Funcs(funcs()).Parse(text)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse template: %w", err)
 	}
@@ -230,4 +231,23 @@ func executeTemplate(text string, data any) (string, error) {
 	}
 
 	return b.String(), nil
+}
+
+func input(name string) string {
+	return prompt.Input(name+": ", func(d prompt.Document) []prompt.Suggest {
+		return []prompt.Suggest{}
+	}, prompt.OptionPrefixTextColor(prompt.Green))
+}
+
+func choose(name string, opts ...string) string {
+	return prompt.Choose(name+": ", opts, prompt.OptionPrefixTextColor(prompt.Green))
+}
+
+func funcs() template.FuncMap {
+	m := sprig.TxtFuncMap()
+	m["i"] = input
+	m["input"] = input
+	m["choose"] = choose
+	m["select"] = choose
+	return m
 }
