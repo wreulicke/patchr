@@ -55,6 +55,50 @@ Flags:
 Use "patchr [command] --help" for more information about a command.
 ```
 
+### Directives
+
+Currently, we have 5 directives.
+
+1. replace
+  * repalce next line
+2. add
+  * add next line
+3. remove
+  * remove next line
+4. template
+  * expand template using go/template
+5. cut
+  * cut a whole block
+
+```go
+func main() {
+  // You can use go text/template in replace/add/template directives
+  
+  // `replace` directive replace next line
+	// patchr:replace fmt.Println("Hello, {{ .Name }}!")
+  fmt.Println("Hello World!")
+
+  // `add` directive add next line
+  // patchr:add fmt.Println("Hello, {{ .Name }}!")
+
+  // `template` directive can expand text/template here
+  // patchr:template-start
+  // {{ if .Enabled }}
+  // fmt.Println("Enabled!")
+  // {{ end }}
+  // patchr:template-end
+
+  // `remove` directive remove next line
+  // patchr:remove
+  fmt.Println("this will be removed")
+  
+  // `cut` directive cut the whole block
+  // patchr:cut-start
+  panic("this will be cut")
+  // patchr:cut-end
+}
+```
+
 ## Example
 
 See [testdata](./testdata/).

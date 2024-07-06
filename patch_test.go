@@ -47,11 +47,11 @@ func TestPatch_Add(t *testing.T) {
 	s.Assert(t)
 }
 
-func TestPatch_Skip(t *testing.T) {
+func TestPatch_Cut(t *testing.T) {
 	t.Parallel()
 	p := NewPatcher("//", map[string]string{})
 	s := snap.New()
-	f, err := os.Open("testdata/skip.go")
+	f, err := os.Open("testdata/cut.go")
 	if err != nil {
 		t.Fatal(err)
 	}

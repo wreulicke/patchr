@@ -29,10 +29,10 @@ const (
 	commentDirectiveTemplateStart = "patchr:template-start"
 	// end of template block.
 	commentDirectiveTemplateEnd = "patchr:template-end"
-	// start of skip block.
-	commentDirectiveSkipStart = "patchr:skip-start"
-	// end of skip block.
-	commentDirectiveSkipEnd = "patchr:skip-end"
+	// start of cut block.
+	commentDirectiveCutStart = "patchr:cut-start"
+	// end of cut block.
+	commentDirectiveCutEnd = "patchr:cut-end"
 )
 
 var commentDirectives = []patchCommentDirective{
@@ -41,8 +41,8 @@ var commentDirectives = []patchCommentDirective{
 	commentDirectiveRemove,
 	commentDirectiveTemplateStart,
 	commentDirectiveTemplateEnd,
-	commentDirectiveSkipStart,
-	commentDirectiveSkipEnd,
+	commentDirectiveCutStart,
+	commentDirectiveCutEnd,
 }
 
 type Patcher struct {
@@ -103,9 +103,9 @@ func (p *Patcher) visit(line string, dst *bufio.Writer, scanner *bufio.Scanner, 
 				return p.visitTemplateStart(line, dst, scanner, data)
 			case commentDirectiveTemplateEnd:
 				return errors.New("unexpected end directive")
-			case commentDirectiveSkipStart:
-				return p.visitSkipStart(line, dst, scanner, data)
-			case commentDirectiveSkipEnd:
+			case commentDirectiveCutStart:
+				return p.visitCutStart(line, dst, scanner, data)
+			case commentDirectiveCutEnd:
 				return errors.New("unexpected end directive")
 			}
 		}
@@ -189,10 +189,10 @@ func (p *Patcher) visitTemplateStart(line string, dst *bufio.Writer, scanner *bu
 	return writeNewLine(t, dst)
 }
 
-func (p *Patcher) visitSkipStart(line string, dst *bufio.Writer, scanner *bufio.Scanner, data any) error {
+func (p *Patcher) visitCutStart(line string, dst *bufio.Writer, scanner *bufio.Scanner, data any) error {
 	for scanner.Scan() {
 		t := scanner.Text()
-		if strings.Contains(t, p.directives[commentDirectiveSkipEnd]) {
+		if strings.Contains(t, p.directives[commentDirectiveCutEnd]) {
 			break
 		}
 	}
