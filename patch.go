@@ -48,12 +48,14 @@ var commentDirectives = []patchCommentDirective{
 type Patcher struct {
 	commentPrefix string
 	directives    map[patchCommentDirective]string
+	inputs        map[string]string
 }
 
-func NewPatcher(commentPrefix string) *Patcher {
+func NewPatcher(commentPrefix string, inputs map[string]string) *Patcher {
 	p := &Patcher{}
 	p.commentPrefix = commentPrefix + " "
 	p.directives = make(map[patchCommentDirective]string, len(commentDirectives))
+	p.inputs = inputs
 
 	for _, directive := range commentDirectives {
 		d := buildDirective(commentPrefix, directive)
@@ -124,7 +126,7 @@ func (p *Patcher) visitReplace(line string, dst *bufio.Writer, scanner *bufio.Sc
 	d := p.directives[commentDirectiveReplace]
 	index := strings.Index(line, d)
 
-	replaced, err := executeTemplate(line[index+len(d):], data)
+	replaced, err := p.executeTemplate(line[index+len(d):], data)
 	if err != nil {
 		return err
 	}
@@ -137,7 +139,7 @@ func (p *Patcher) visitAdd(line string, dst *bufio.Writer, scanner *bufio.Scanne
 	d := p.directives[commentDirectiveAdd]
 	index := strings.Index(line, d)
 
-	replaced, err := executeTemplate(line[index+len(d):], data)
+	replaced, err := p.executeTemplate(line[index+len(d):], data)
 	if err != nil {
 		return err
 	}
@@ -179,7 +181,7 @@ func (p *Patcher) visitTemplateStart(line string, dst *bufio.Writer, scanner *bu
 		return fmt.Errorf("unexpected scan error: %w", err)
 	}
 
-	t, err := executeTemplate(b.String(), data)
+	t, err := p.executeTemplate(b.String(), data)
 	if err != nil {
 		return err
 	}
@@ -219,9 +221,9 @@ func writeNewLine(line string, dst io.Writer) error {
 	return nil
 }
 
-func executeTemplate(text string, data any) (string, error) {
+func (p *Patcher) executeTemplate(text string, data any) (string, error) {
 	var b bytes.Buffer
-	t, err := template.New("replace").Funcs(funcs()).Parse(text)
+	t, err := template.New("replace").Funcs(p.funcMap()).Parse(text)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse template: %w", err)
 	}
@@ -233,21 +235,35 @@ func executeTemplate(text string, data any) (string, error) {
 	return b.String(), nil
 }
 
-func input(name string) string {
-	return prompt.Input(name+": ", func(d prompt.Document) []prompt.Suggest {
+func (p *Patcher) input(name string) string {
+	if i, ok := p.inputs[name]; ok {
+		return i
+	}
+
+	i := prompt.Input(name+": ", func(d prompt.Document) []prompt.Suggest {
 		return []prompt.Suggest{}
 	}, prompt.OptionPrefixTextColor(prompt.Green))
+	p.inputs[name] = i
+
+	return i
 }
 
-func choose(name string, opts ...string) string {
-	return prompt.Choose(name+": ", opts, prompt.OptionPrefixTextColor(prompt.Green))
+func (p *Patcher) choose(name string, opts ...string) string {
+	if i, ok := p.inputs[name]; ok {
+		return i
+	}
+
+	i := prompt.Choose(name+": ", opts, prompt.OptionPrefixTextColor(prompt.Green))
+	p.inputs[name] = i
+
+	return i
 }
 
-func funcs() template.FuncMap {
+func (p *Patcher) funcMap() template.FuncMap {
 	m := sprig.TxtFuncMap()
-	m["i"] = input
-	m["input"] = input
-	m["choose"] = choose
-	m["select"] = choose
+	m["i"] = p.input
+	m["input"] = p.input
+	m["choose"] = p.choose
+	m["select"] = p.choose
 	return m
 }
