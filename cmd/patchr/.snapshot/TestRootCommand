@@ -1,0 +1,16 @@
+=== testdata/resource/add.go === start ===
+package resource
+
+func add() {
+	fmt.Println("Hello, John")
+}
+=== testdata/resource/add.go === end ===
+=== testdata/resource/test.java === start ===
+package cmd.patchr.testdata.resource;
+
+class Test {
+  public static void main(String[] args) {
+    System.out.println("Hello, John!");
+  }
+}
+=== testdata/resource/test.java === end ===

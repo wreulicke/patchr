@@ -1,4 +1,4 @@
-module github.com/wreulicke/go-cli-template
+module github.com/wreulicke/patchr
 
 go 1.22
 

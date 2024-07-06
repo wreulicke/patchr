@@ -9,7 +9,7 @@ import (
 
 func TestPatch_Replace(t *testing.T) {
 	t.Parallel()
-	p := NewPatcher("//")
+	p := NewPatcher("//", map[string]string{})
 	s := snap.New()
 	f, err := os.Open("testdata/replace.go")
 	if err != nil {
@@ -29,7 +29,7 @@ func TestPatch_Replace(t *testing.T) {
 
 func TestPatch_Add(t *testing.T) {
 	t.Parallel()
-	p := NewPatcher("//")
+	p := NewPatcher("//", map[string]string{})
 	s := snap.New()
 	f, err := os.Open("testdata/add.go")
 	if err != nil {
@@ -49,7 +49,7 @@ func TestPatch_Add(t *testing.T) {
 
 func TestPatch_Skip(t *testing.T) {
 	t.Parallel()
-	p := NewPatcher("//")
+	p := NewPatcher("//", map[string]string{})
 	s := snap.New()
 	f, err := os.Open("testdata/skip.go")
 	if err != nil {
@@ -78,7 +78,7 @@ func TestPatch_Template(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			p := NewPatcher("//")
+			p := NewPatcher("//", map[string]string{})
 			s := snap.New()
 			f, err := os.Open("testdata/template.go")
 			if err != nil {
@@ -98,7 +98,7 @@ func TestPatch_Template(t *testing.T) {
 
 func TestPatch_Remove(t *testing.T) {
 	t.Parallel()
-	p := NewPatcher("//")
+	p := NewPatcher("//", map[string]string{})
 	s := snap.New()
 	f, err := os.Open("testdata/remove.go")
 	if err != nil {

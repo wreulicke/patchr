@@ -1,0 +1,2 @@
+# patchr:replace name: {{ input "value" }}
+name: sample
