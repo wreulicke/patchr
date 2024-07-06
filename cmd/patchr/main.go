@@ -39,9 +39,7 @@ func NewApp() *cobra.Command {
 				// todo support dir
 				return fmt.Errorf("file is a directory: %s", f)
 			}
-			applyPatch(f, nil) // TODO add data
-
-			return nil
+			return applyPatch(f, nil) // TODO add data
 		},
 	}
 
@@ -76,6 +74,11 @@ func applyPatch(path string, data any) error {
 	err = p.Apply(&b, src, data)
 	if err != nil {
 		return fmt.Errorf("cannot apply patch: %w", err)
+	}
+
+	err = src.Truncate(0)
+	if err != nil {
+		return fmt.Errorf("cannot truncate: %w", err)
 	}
 
 	_, err = src.Seek(0, 0)
