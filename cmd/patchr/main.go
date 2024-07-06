@@ -75,10 +75,26 @@ var wellknownCommentPrefixMap = map[string]string{
 	".yml":    "#",
 }
 
-func detectCommentPrefix(path string) (string, error) {
+func detectCommentPrefix(f *os.File, path string) (string, error) {
 	ext := filepath.Ext(path)
 	if prefix, ok := wellknownCommentPrefixMap[ext]; ok {
 		return prefix, nil
+	}
+
+	var err error
+	// check shebang
+	bs := make([]byte, 2)
+	_, err = f.Read(bs)
+	if err != nil {
+		return "", fmt.Errorf("cannot try to read shebang: %w", err)
+	}
+
+	defer func() {
+		_, err = f.Seek(0, 0)
+	}()
+
+	if string(bs) == "#!" {
+		return "#", err
 	}
 	return "", fmt.Errorf("unsupported file extension: %s", ext)
 }
@@ -90,29 +106,12 @@ func readValues(config *patchConfig) (any, error) {
 	}
 	defer f.Close()
 
-	var b bytes.Buffer
-	p, err := detectCommentPrefix(config.valuesPath)
-	if p == "" {
-		// check shebang
-		bs := make([]byte, 2)
-		_, err := f.Read(bs)
-		if err != nil {
-			return nil, fmt.Errorf("cannot try to read shebang: %w", err)
-		}
-		if string(bs) == "#!" {
-			p = "#"
-		}
-
-		// reset position
-		_, err = f.Seek(0, 0)
-		if err != nil {
-			return nil, fmt.Errorf("cannot reset position: %w", err)
-		}
-	}
+	p, err := detectCommentPrefix(f, config.valuesPath)
 	if err != nil {
 		return nil, err
 	}
 
+	var b bytes.Buffer
 	patcher := patchr.NewPatcher(p, config.inputs)
 	err = patcher.Apply(&b, f, nil)
 	if err != nil {
@@ -176,19 +175,20 @@ func applyPatchDir(targetPath string, config *patchConfig, data any) error {
 }
 
 func applyPatch(targetPath string, config *patchConfig, data any) error {
-	prefix := config.commentPrefix
-	if prefix == "" {
-		var err error
-		prefix, err = detectCommentPrefix(targetPath)
-		if err != nil {
-			return err
-		}
-	}
 	src, err := os.OpenFile(targetPath, os.O_RDWR, 0o644)
 	if err != nil {
 		return fmt.Errorf("cannot open file: %w", err)
 	}
 	defer src.Close()
+
+	prefix := config.commentPrefix
+	if prefix == "" {
+		var err error
+		prefix, err = detectCommentPrefix(src, targetPath)
+		if err != nil {
+			return err
+		}
+	}
 
 	var b bytes.Buffer
 	p := patchr.NewPatcher(prefix, config.inputs)
