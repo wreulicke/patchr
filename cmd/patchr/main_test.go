@@ -43,7 +43,7 @@ func TestVersionCommand(t *testing.T) {
 
 	s := snap.New()
 	app := NewApp(map[string]string{})
-	app.SetArgs([]string{"version", "-d"})
+	app.SetArgs([]string{"version"})
 	app.SetOut(s)
 	err := app.Execute()
 	if err != nil {
