@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"debug/buildinfo"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wreulicke/patchr"
@@ -75,6 +77,8 @@ var wellknownCommentPrefixMap = map[string]string{
 	".yml":    "#",
 }
 
+var commentPrefixDirective = "patchr:comment-prefix"
+
 func detectCommentPrefix(f *os.File, path string) (string, error) {
 	ext := filepath.Ext(path)
 	if prefix, ok := wellknownCommentPrefixMap[ext]; ok {
@@ -83,18 +87,25 @@ func detectCommentPrefix(f *os.File, path string) (string, error) {
 
 	var err error
 	// check shebang
-	bs := make([]byte, 2)
-	_, err = f.Read(bs)
+	r := bufio.NewReader(f)
+	line, _, err := r.ReadLine()
 	if err != nil {
 		return "", fmt.Errorf("cannot try to read shebang: %w", err)
 	}
 
-	if string(bs) == "#!" {
-		_, err := f.Seek(0, 0)
-		if err != nil {
-			return "", fmt.Errorf("cannot seek: %w", err)
-		}
+	_, err = f.Seek(0, 0)
+	if err != nil {
+		return "", fmt.Errorf("cannot seek: %w", err)
+	}
+
+	// check shebang
+	if strings.HasPrefix(string(line), "#!") {
 		return "#", nil
+	}
+	// check comment prefix directive
+	index := strings.Index(string(line), commentPrefixDirective)
+	if index > 0 {
+		return strings.TrimSpace(string(line[:index])), nil
 	}
 	return "", fmt.Errorf("unsupported file extension: %s", ext)
 }
