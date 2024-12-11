@@ -33,6 +33,8 @@ const (
 	commentDirectiveCutStart = "patchr:cut-start"
 	// end of cut block.
 	commentDirectiveCutEnd = "patchr:cut-end"
+	// truncate to the end of file.
+	commentDirectiveTruncate = "patchr:truncate"
 )
 
 var commentDirectives = []patchCommentDirective{
@@ -43,6 +45,7 @@ var commentDirectives = []patchCommentDirective{
 	commentDirectiveTemplateEnd,
 	commentDirectiveCutStart,
 	commentDirectiveCutEnd,
+	commentDirectiveTruncate,
 }
 
 type Patcher struct {
@@ -107,6 +110,8 @@ func (p *Patcher) visit(line string, dst *bufio.Writer, scanner *bufio.Scanner, 
 				return p.visitCutStart(line, dst, scanner, data)
 			case commentDirectiveCutEnd:
 				return errors.New("unexpected end directive")
+			case commentDirectiveTruncate:
+				return p.visitTruncate(line, dst, scanner, data)
 			}
 		}
 	}
@@ -195,6 +200,18 @@ func (p *Patcher) visitCutStart(line string, dst *bufio.Writer, scanner *bufio.S
 		if strings.Contains(t, p.directives[commentDirectiveCutEnd]) {
 			break
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("unexpected scan error: %w", err)
+	}
+
+	return nil
+}
+
+func (p *Patcher) visitTruncate(_ string, _ *bufio.Writer, scanner *bufio.Scanner, _ any) error {
+	for scanner.Scan() {
+		// skip all lines
 	}
 
 	if err := scanner.Err(); err != nil {
