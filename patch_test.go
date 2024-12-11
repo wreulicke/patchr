@@ -113,3 +113,21 @@ func TestPatch_Remove(t *testing.T) {
 
 	s.Assert(t)
 }
+
+func TestPatch_Truncate(t *testing.T) {
+	t.Parallel()
+	p := NewPatcher("//", map[string]string{})
+	s := snap.New()
+	f, err := os.Open("testdata/truncate.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	err = p.Apply(s, f, nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	s.Assert(t)
+}
