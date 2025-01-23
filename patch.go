@@ -232,6 +232,9 @@ func writeNewLine(line string, dst io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("cannot write to dst: %w", err)
 	}
+	if len(line) > 0 && line[len(line)-1] == '\n' {
+		return nil
+	}
 	_, err = dst.Write([]byte("\n"))
 	if err != nil {
 		return fmt.Errorf("cannot write to dst: %w", err)
