@@ -1,3 +1,8 @@
 package main
 
 
+
+func indented() {
+	var test int
+	println(test)
+}

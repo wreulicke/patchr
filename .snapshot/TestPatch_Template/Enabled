@@ -4,3 +4,8 @@ package main
 func main() {
 }
 
+
+func indented() {
+	var test int
+	println(test)
+}
