@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"debug/buildinfo"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,6 +18,8 @@ import (
 	"github.com/wreulicke/patchr"
 	"gopkg.in/yaml.v3"
 )
+
+var errUnsupportedFileExtension = errors.New("unsupported file extension")
 
 type patchConfig struct {
 	valuesPath    string
@@ -107,7 +110,7 @@ func detectCommentPrefix(f *os.File, path string) (string, error) {
 	if index > 0 {
 		return strings.TrimSpace(string(line[:index])), nil
 	}
-	return "", fmt.Errorf("unsupported file extension: %s", ext)
+	return "", fmt.Errorf("unsupported file extension: %s: %w", ext, errUnsupportedFileExtension)
 }
 
 func readValues(config *patchConfig) (any, error) {
@@ -192,21 +195,31 @@ func applyPatch(targetPath string, config *patchConfig, data any) error {
 	}
 	defer src.Close()
 
+	var skip bool
 	prefix := config.commentPrefix
 	if prefix == "" {
 		var err error
 		prefix, err = detectCommentPrefix(src, targetPath)
-		if err != nil {
+		if errors.Is(err, errUnsupportedFileExtension) {
+			skip = true
+		} else if err != nil {
 			return err
 		}
 	}
 
 	var b bytes.Buffer
-	p := patchr.NewPatcher(prefix, config.inputs)
+	if skip {
+		_, err = io.Copy(&b, src)
+		if err != nil {
+			return fmt.Errorf("cannot copy: %w", err)
+		}
+	} else {
+		p := patchr.NewPatcher(prefix, config.inputs)
 
-	err = p.Apply(&b, src, data)
-	if err != nil {
-		return fmt.Errorf("cannot apply patch: %w", err)
+		err = p.Apply(&b, src, data)
+		if err != nil {
+			return fmt.Errorf("cannot apply patch: %w", err)
+		}
 	}
 
 	if config.dryRun {
