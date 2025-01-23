@@ -188,6 +188,7 @@ func applyPatchDir(targetPath string, config *patchConfig, data any) error {
 	return nil
 }
 
+//nolint:funlen
 func applyPatch(targetPath string, config *patchConfig, data any) error {
 	src, err := os.OpenFile(targetPath, os.O_RDWR, 0o644)
 	if os.IsPermission(err) {
