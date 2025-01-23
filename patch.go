@@ -167,7 +167,9 @@ func (p *Patcher) visitRemove(line string, dst *bufio.Writer, scanner *bufio.Sca
 
 func (p *Patcher) visitTemplateStart(line string, dst *bufio.Writer, scanner *bufio.Scanner, data any) error {
 	index := strings.Index(line, p.directives[commentDirectiveTemplateStart])
-	//nolint:gocritic // false positive
+	if index < 0 {
+		return errors.New("template-start directive is not found unexpectedly")
+	}
 	indent := line[:index]
 	var b bytes.Buffer
 	for scanner.Scan() {
@@ -175,7 +177,7 @@ func (p *Patcher) visitTemplateStart(line string, dst *bufio.Writer, scanner *bu
 		if strings.Contains(t, p.directives[commentDirectiveTemplateEnd]) {
 			break
 		}
-		t = strings.TrimPrefix(t, p.commentPrefix)
+		t = strings.TrimPrefix(t, indent+p.commentPrefix)
 		err := writeNewLine(indent+t, &b)
 		if err != nil {
 			return err
